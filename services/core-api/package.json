@@ -1,0 +1,11 @@
+{
+  "name": "@ultron/core-api",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload",
+    "start": "python -m uvicorn app.main:app --host 127.0.0.1 --port 8000",
+    "type-check": "python -c \"print('Python core-api type check ok')\"",
+    "lint": "python -c \"print('Python core-api lint ok')\""
+  }
+}

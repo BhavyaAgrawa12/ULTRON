@@ -1,0 +1,25 @@
+{
+  "name": "ultron-monorepo",
+  "private": true,
+  "version": "0.0.1",
+  "packageManager": "pnpm@10.2.0",
+  "type": "module",
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "dev:desktop": "pnpm --filter @ultron/desktop dev",
+    "dev:core-api": "pnpm --filter @ultron/core-api dev",
+    "build": "turbo run build",
+    "type-check": "turbo run type-check",
+    "lint": "turbo run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,py}\""
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.20.0",
+    "@types/node": "^22.10.0",
+    "eslint": "^9.20.0",
+    "prettier": "^3.5.0",
+    "turbo": "^2.4.0",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.24.0"
+  }
+}

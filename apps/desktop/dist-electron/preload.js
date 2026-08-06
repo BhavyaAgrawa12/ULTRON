@@ -1,0 +1,1 @@
+"use strict";const e=require("electron");e.contextBridge.exposeInMainWorld("ultronAPI",{checkHealth:async()=>await e.ipcRenderer.invoke("check-health"),onLog:n=>{e.ipcRenderer.on("app-log",(t,r)=>n(r))}});
