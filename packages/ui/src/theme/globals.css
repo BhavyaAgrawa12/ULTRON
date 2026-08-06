@@ -1,0 +1,29 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap');
+
+:root {
+  --ultron-bg-primary: #05070A;
+  --ultron-bg-secondary: #0B0F14;
+  --ultron-surface: #121821;
+  --ultron-surface-hover: #1A2330;
+  --ultron-surface-border: #1E293B;
+  --ultron-accent-primary: #00D9FF;
+  --ultron-accent-secondary: #7A5CFF;
+  --ultron-status-success: #22C55E;
+  --ultron-status-warning: #F59E0B;
+  --ultron-status-error: #EF4444;
+  --ultron-text-primary: #F8FAFC;
+  --ultron-text-secondary: #94A3B8;
+  --ultron-text-muted: #64748B;
+  --ultron-font-heading: 'Space Grotesk', system-ui, sans-serif;
+  --ultron-font-body: 'Inter', system-ui, sans-serif;
+  --ultron-font-code: 'JetBrains Mono', monospace;
+}
+
+body {
+  background-color: var(--ultron-bg-primary);
+  color: var(--ultron-text-primary);
+  font-family: var(--ultron-font-body);
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+}
