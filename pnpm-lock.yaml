@@ -38,9 +38,15 @@ importers:
       '@ultron/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@ultron/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       framer-motion:
-        specifier: ^12.0.0
+        specifier: ^12.4.7
         version: 12.43.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      lucide-react:
+        specifier: ^0.475.0
+        version: 0.475.0(react@19.2.8)
       react:
         specifier: ^19.0.0
         version: 19.2.8

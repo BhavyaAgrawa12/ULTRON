@@ -11,6 +11,17 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "declaration": true,
-    "declarationMap": true
+    "declarationMap": true,
+    "baseUrl": ".",
+    "paths": {
+      "@ultron/ui": ["packages/ui/src/index.ts"],
+      "@ultron/shared": ["packages/shared/src/index.ts"],
+      "@ultron/brain": ["packages/brain/src/index.ts"],
+      "@ultron/memory": ["packages/memory/src/index.ts"],
+      "@ultron/automation": ["packages/automation/src/index.ts"],
+      "@ultron/ai-router": ["packages/ai-router/src/index.ts"],
+      "@ultron/device": ["packages/device/src/index.ts"],
+      "@ultron/plugin": ["packages/plugin/src/index.ts"]
+    }
   }
 }
