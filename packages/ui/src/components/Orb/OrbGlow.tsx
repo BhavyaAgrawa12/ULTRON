@@ -12,17 +12,17 @@ export const OrbGlow: React.FC<OrbGlowProps> = React.memo(({ state }) => {
 
   return (
     <motion.div
-      className={`absolute inset-0 rounded-full ${currentConfig.glowBlur} transition-colors duration-500 pointer-events-none`}
+      className={`absolute -inset-8 rounded-full ${currentConfig.glowBlur} transition-colors duration-700 pointer-events-none`}
       style={{
         backgroundColor: currentConfig.primary,
-        boxShadow: `0 0 50px ${currentConfig.shadow}`,
+        boxShadow: `0 0 80px ${currentConfig.shadow}`,
       }}
       animate={{
-        scale: state === 'wake' ? [1, 1.3, 1.1] : state === 'executing' ? [1, 1.1, 1] : [1, 1.05, 1],
-        opacity: state === 'offline' ? 0.2 : 0.85,
+        scale: state === 'wake' ? [1, 1.35, 1.1] : state === 'executing' ? [1, 1.15, 1] : [1, 1.06, 1],
+        opacity: state === 'offline' ? 0.15 : 0.85,
       }}
       transition={{
-        duration: state === 'executing' ? 1 : 2.5,
+        duration: state === 'executing' ? 1.2 : 3,
         repeat: Infinity,
         ease: 'easeInOut',
       }}

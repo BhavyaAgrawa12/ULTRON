@@ -1,22 +1,33 @@
-# Project HELIOS — ULTRON Orb Engine
+# Project HELIOS V2 — ULTRON Orb Visual Redesign
 
-The **Orb Engine** (Codename: Project HELIOS) is the central visual state engine for Project ULTRON. It provides high-performance (60 FPS) visual feedback across 10 distinct operational states without direct coupling to backend or AI logic.
+The **Orb Engine** (Codename: Project HELIOS V2) is the primary visual brand identity and visual state engine of Project ULTRON.
 
 ---
 
-## 🏛️ Architecture & Philosophy
-
-The Orb Engine strictly separates the **State Engine** from the **React View Layer**:
+## 🏛️ Multi-Layer Visual Architecture
 
 ```
-OrbEngine.ts (Pure TypeScript, No React)
-    ↓ transition({ state, duration, source })
-Orb.tsx (React View Layer & Mouse Parallax)
+OrbGlow (Ambient Background Bloom)
     ↓
-Layer Components (OrbCore, OrbGlow, OrbRing, OrbParticles)
+OrbParticles (Selective Particles: 'researching' & 'memory' only)
+    ↓
+OrbHalo (Radial Energy Halo Ring)
+    ↓
+OrbRing (Dual Counter-Rotating Rings)
+    ↓
+OrbCore (Multi-Stop Gradient Sphere & Specular Lens Highlight)
 ```
 
-No module or subsystem should manipulate Framer Motion animations directly. Subsystems interact exclusively via the `OrbEngine` controller.
+No subsystem manipulates Framer Motion animations directly. Subsystems interact exclusively via `OrbEngine.ts`.
+
+---
+
+## 📐 Dimensions & Interaction Limits
+
+- **Default Scale**: `lg` = 160px (140px – 180px centerpiece range).
+- **Mouse Parallax Translation**: Max **10px**.
+- **Mouse 3D Tilt**: Max **4°**.
+- **Accessibility**: Disables floating, parallax, and 3D tilt when `prefers-reduced-motion` is active.
 
 ---
 
@@ -24,13 +35,13 @@ No module or subsystem should manipulate Framer Motion animations directly. Subs
 
 | State | Visual Behavior | Primary Accent |
 |-------|-----------------|----------------|
-| `idle` | Slow breathing, soft cyan glow, gentle floating | `#00D9FF` (Cyan) |
-| `wake` | Outer ring expansion, bright energy pulse | `#00F0FF` (Bright Cyan) |
+| `idle` | Slow breathing (1 to 1.04), soft cyan ambient bloom | `#00D9FF` (Cyan) |
+| `wake` | Under 1s sequence: Expansion (1.2) ➔ Ring acceleration ➔ Energy pulse | `#00F0FF` (Bright Cyan) |
 | `thinking` | Rotating ring, calm purple intelligent glow | `#7A5CFF` (Purple) |
-| `listening` | Gentle rhythmic aura pulse | `#10B981` (Emerald) |
-| `speaking` | Dynamic outward ripple waves | `#38BDF8` (Sky Blue) |
-| `executing` | Fast ring rotation, high glow intensity | `#00E5FF` (Laser Cyan) |
-| `researching` | Orbiting particle field, purple accent | `#8B5CF6` (Violet) |
+| `listening` | Gentle rhythmic pulse (breathing while paying attention) | `#10B981` (Emerald) |
+| `speaking` | Wave propagation from center | `#38BDF8` (Sky Blue) |
+| `executing` | Faster ring rotation, high glow intensity | `#00E5FF` (Laser Cyan) |
+| `researching` | Orbiting particle field, violet accent | `#8B5CF6` (Violet) |
 | `memory` | Inward energy flow, cyan + purple gradient blend | `#00D9FF` / `#7A5CFF` |
 | `offline` | Dim muted grey, minimal movement | `#64748B` (Muted) |
 | `error` | Red soft vibration pulse, zero harsh flashing | `#EF4444` (Red) |
@@ -39,50 +50,26 @@ No module or subsystem should manipulate Framer Motion animations directly. Subs
 
 ## 💻 Public API & Controller Usage
 
-### 1. Creating an Engine Instance (Factory Pattern)
 ```ts
-import { createOrbEngine } from '@ultron/ui';
+import { createOrbEngine, Orb } from '@ultron/ui';
 
-// Create a standalone engine instance
+// 1. Create a pure TS OrbEngine instance (Dependency Injection factory)
 const orb = createOrbEngine('idle');
 
-// Transition states using future-proof options
+// 2. Future-Proof Transition API
 orb.transition({
   state: 'thinking',
   duration: 300,
   source: 'brain',
 });
 
-// Shortcut string state transitions
-orb.transition('executing');
-
-// Subscribe to state transitions
-const unsubscribe = orb.subscribe((current, previous) => {
-  console.log(`Orb transitioned from ${previous.state} to ${current.state}`);
-});
-```
-
-### 2. Rendering in React
-```tsx
-import { Orb, createOrbEngine } from '@ultron/ui';
-import { useMemo } from 'react';
-
-export function CompanionView() {
-  const orb = useMemo(() => createOrbEngine('idle'), []);
-
-  return (
-    <div className="flex flex-col items-center justify-center p-8">
-      <Orb engine={orb} size="lg" />
-    </div>
-  );
-}
+// 3. Render in React
+<Orb engine={orb} size="lg" />
 ```
 
 ---
 
 ## 🚀 Future Integration Strategy
-
-The Orb Engine serves as the unified visual target for all future ULTRON subsystems:
 
 ```
 Subsystem Modules              Target Visual State
@@ -95,11 +82,3 @@ Automation Engine     ------->  'executing'
 Research Engine       ------->  'researching'
 System Diagnostics    ------->  'offline' / 'error'
 ```
-
----
-
-## ♿ Accessibility & Performance
-
-- **`prefers-reduced-motion`**: Automatically disables floating animations, 3D tilt, and mouse parallax when enabled on the OS level, keeping only minimal opacity transitions.
-- **Mouse Parallax**: Smooth spring-based tracking capped strictly at **16px max translation** and **6° max 3D tilt**.
-- **Conditional Rendering**: `OrbParticles` unmounts in non-particle states (`researching` and `memory` only) to maintain **60 FPS** performance.

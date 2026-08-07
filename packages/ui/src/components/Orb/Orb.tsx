@@ -7,12 +7,13 @@ import { OrbProps, OrbState } from './Orb.types';
 import { OrbGlow } from './OrbGlow';
 import { OrbCore } from './OrbCore';
 import { OrbRing } from './OrbRing';
+import { OrbHalo } from './OrbHalo';
 import { OrbParticles } from './OrbParticles';
 
 export const Orb: React.FC<OrbProps> = ({
   engine: externalEngine,
   state: propState,
-  size = 'md',
+  size = 'lg', // Default size upgraded to lg (160px) for Project HELIOS V2
   className,
 }) => {
   // Create or reuse pure TS OrbEngine
@@ -44,7 +45,7 @@ export const Orb: React.FC<OrbProps> = ({
     };
   }, [engine, externalEngine]);
 
-  // Check prefers-reduced-motion accessibility preference
+  // Accessibility check for prefers-reduced-motion
   const [reducedMotion, setReducedMotion] = useState(false);
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -58,18 +59,12 @@ export const Orb: React.FC<OrbProps> = ({
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
 
-  const springConfig = { damping: 20, stiffness: 150 };
+  const springConfig = { damping: 25, stiffness: 120 };
   const translateX = useSpring(mouseX, springConfig);
   const translateY = useSpring(mouseY, springConfig);
 
-  const rotateX = useSpring(
-    useMotionValue(0),
-    springConfig
-  );
-  const rotateY = useSpring(
-    useMotionValue(0),
-    springConfig
-  );
+  const rotateX = useSpring(useMotionValue(0), springConfig);
+  const rotateY = useSpring(useMotionValue(0), springConfig);
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -78,11 +73,10 @@ export const Orb: React.FC<OrbProps> = ({
 
     const handleMouseMove = (e: MouseEvent) => {
       const { innerWidth, innerHeight } = window;
-      // Calculate normalized mouse offset (-1 to 1)
       const normX = (e.clientX / innerWidth) * 2 - 1;
       const normY = (e.clientY / innerHeight) * 2 - 1;
 
-      // Apply max 16px translation limit & max 6deg tilt limit
+      // Restrict strictly to 10px max translation & 4deg max 3D tilt per HELIOS V2 specs
       const targetX = normX * orbConfig.interaction.maxTranslation;
       const targetY = normY * orbConfig.interaction.maxTranslation;
       const targetTiltY = normX * orbConfig.interaction.maxTilt;
@@ -119,16 +113,19 @@ export const Orb: React.FC<OrbProps> = ({
       aria-label={`ULTRON Orb State: ${currentState}`}
       role="img"
     >
-      {/* Outer ambient glow */}
+      {/* 1. Ambient Background Aura Glow */}
       <OrbGlow state={currentState} />
 
-      {/* Orbiting particles (Renders only for researching & memory) */}
+      {/* 2. Selective Orbiting Particles (researching & memory only) */}
       <OrbParticles state={currentState} />
 
-      {/* Outer energy ring */}
+      {/* 3. Radial Energy Halo Ring */}
+      <OrbHalo state={currentState} />
+
+      {/* 4. Dual Counter-Rotating Energy Rings */}
       <OrbRing state={currentState} />
 
-      {/* Center sphere core */}
+      {/* 5. Center Sphere Core with Specular Lens Highlight */}
       <OrbCore state={currentState} />
     </motion.div>
   );

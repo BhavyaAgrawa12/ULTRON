@@ -40,9 +40,9 @@ export default function App() {
             </div>
           </SidebarShell>
 
-          {/* Main Workspace (Centered) */}
+          {/* Main Workspace (Centered Hero Element) */}
           <main className="flex-1 flex flex-col items-center justify-center p-8 bg-[#05070A] relative overflow-hidden">
-            {/* Background grid texture */}
+            {/* Background grid texture with subtle radial ambient flare */}
             <div
               className="absolute inset-0 opacity-[0.03] pointer-events-none"
               style={{
@@ -50,9 +50,10 @@ export default function App() {
                 backgroundSize: '40px 40px',
               }}
             />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#00D9FF]/5 rounded-full blur-[140px] pointer-events-none" />
 
-            {/* HELIOS Orb Engine Visual Centerpiece */}
-            <div className="relative z-10 flex flex-col items-center text-center space-y-6">
+            {/* HELIOS V2 Orb Engine Hero Visual Centerpiece (160px Scale) */}
+            <div className="relative z-10 flex flex-col items-center text-center space-y-8">
               <Orb engine={orbEngine} size="lg" />
 
               <div className="space-y-2">
