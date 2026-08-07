@@ -7,12 +7,12 @@ export const orbConfig = {
     maxTilt: 4, // Max 3D tilt angle in deg
     smoothingFactor: 0.06,
   },
-  // Explicit numeric pixel dimensions to eliminate Tailwind CSS purge / layout collapse
+  // Responsive pixel sizes: 64px sm, 96px md, 160px lg (default hero), 220px xl
   pixelSizes: {
     sm: 64,
-    md: 140,
-    lg: 160, // Default Welcome Hero centerpiece
-    xl: 192,
+    md: 96,
+    lg: 160,
+    xl: 220,
   } as Record<OrbSize, number>,
   particleCaps: {
     researching: 10, // 8-12 particles cap
@@ -23,17 +23,18 @@ export const orbConfig = {
     spreadPx: 45,
     blurPx: 80,
   },
+  // Light Temperature Palette per HELIOS V3 Freeze Specs
   states: {
     idle: {
-      primary: colors.accent.primary,
+      primary: colors.accent.primary, // Cool Cyan (#00D9FF)
       secondary: colors.accent.secondary,
       shadow: 'rgba(0, 217, 255, 0.45)',
-      ringOpacity: 0.35,
+      ringOpacity: 0.3,
       haloOpacity: 0.25,
       particleCount: 0,
     },
     wake: {
-      primary: '#00F0FF',
+      primary: '#00F0FF', // Bright Cyan
       secondary: '#38BDF8',
       shadow: 'rgba(0, 240, 255, 0.8)',
       ringOpacity: 0.85,
@@ -41,7 +42,7 @@ export const orbConfig = {
       particleCount: 0,
     },
     thinking: {
-      primary: colors.accent.secondary,
+      primary: '#7A5CFF', // Cyan -> Violet Transition (#7A5CFF)
       secondary: colors.accent.primary,
       shadow: 'rgba(122, 92, 255, 0.65)',
       ringOpacity: 0.75,
@@ -49,7 +50,7 @@ export const orbConfig = {
       particleCount: 0,
     },
     listening: {
-      primary: '#10B981',
+      primary: '#10B981', // Emerald
       secondary: colors.accent.primary,
       shadow: 'rgba(16, 185, 129, 0.55)',
       ringOpacity: 0.55,
@@ -57,7 +58,7 @@ export const orbConfig = {
       particleCount: 0,
     },
     speaking: {
-      primary: '#38BDF8',
+      primary: '#38BDF8', // Sky Blue
       secondary: colors.accent.primary,
       shadow: 'rgba(56, 189, 248, 0.65)',
       ringOpacity: 0.65,
@@ -65,7 +66,7 @@ export const orbConfig = {
       particleCount: 0,
     },
     executing: {
-      primary: '#00E5FF',
+      primary: '#00E5FF', // Crisp Brighter Cyan (#00E5FF)
       secondary: '#A855F7',
       shadow: 'rgba(0, 229, 255, 0.75)',
       ringOpacity: 0.9,
@@ -73,7 +74,7 @@ export const orbConfig = {
       particleCount: 0,
     },
     researching: {
-      primary: '#8B5CF6',
+      primary: '#8B5CF6', // Violet
       secondary: colors.accent.primary,
       shadow: 'rgba(139, 92, 246, 0.65)',
       ringOpacity: 0.75,
@@ -81,15 +82,15 @@ export const orbConfig = {
       particleCount: 10,
     },
     memory: {
-      primary: colors.accent.primary,
-      secondary: colors.accent.secondary,
+      primary: '#7A5CFF', // Violet Dominant
+      secondary: colors.accent.primary,
       shadow: 'rgba(122, 92, 255, 0.65)',
       ringOpacity: 0.65,
       haloOpacity: 0.5,
       particleCount: 7,
     },
     offline: {
-      primary: colors.text.muted,
+      primary: '#64748B', // Neutral Grey (#64748B)
       secondary: '#334155',
       shadow: 'rgba(100, 116, 139, 0.15)',
       ringOpacity: 0.15,
@@ -97,7 +98,7 @@ export const orbConfig = {
       particleCount: 0,
     },
     error: {
-      primary: colors.status.error,
+      primary: '#EF4444', // Warm Red (#EF4444)
       secondary: '#991B1B',
       shadow: 'rgba(239, 68, 68, 0.65)',
       ringOpacity: 0.65,

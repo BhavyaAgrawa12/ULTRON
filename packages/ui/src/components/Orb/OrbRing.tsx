@@ -13,7 +13,7 @@ export const OrbRing: React.FC<OrbRingProps> = React.memo(({ state }) => {
 
   return (
     <>
-      {/* Outer SVG Energy Ring with Vector Dashed Path & Orbiting Energy Nodes */}
+      {/* Outer SVG Energy Ring (Clockwise 28s) with strictly 2 Satellite Nodes */}
       <motion.div
         className="absolute -inset-6 pointer-events-none z-30"
         variants={outerRingVariants}
@@ -50,7 +50,7 @@ export const OrbRing: React.FC<OrbRingProps> = React.memo(({ state }) => {
             strokeDasharray="18 8 40 12"
           />
 
-          {/* Orbiting Energy Satellite Node 1 */}
+          {/* Outer Satellite Node 1 */}
           <circle
             cx="100"
             cy="8"
@@ -59,7 +59,7 @@ export const OrbRing: React.FC<OrbRingProps> = React.memo(({ state }) => {
             filter="url(#nodeGlow)"
           />
 
-          {/* Orbiting Energy Satellite Node 2 */}
+          {/* Outer Satellite Node 2 */}
           <circle
             cx="100"
             cy="192"
@@ -70,7 +70,7 @@ export const OrbRing: React.FC<OrbRingProps> = React.memo(({ state }) => {
         </svg>
       </motion.div>
 
-      {/* Inner Counter-Rotating SVG Secondary Ring */}
+      {/* Inner SVG Energy Ring (Counter-Clockwise 22s) with strictly 1 Satellite Node */}
       <motion.div
         className="absolute -inset-3 pointer-events-none z-30"
         variants={innerRingVariants}
@@ -99,7 +99,7 @@ export const OrbRing: React.FC<OrbRingProps> = React.memo(({ state }) => {
             strokeDasharray="6 6 30 10"
           />
 
-          {/* Counter Node */}
+          {/* Inner Satellite Node 3 (Strictly 3 nodes total across Orb) */}
           <circle
             cx="186"
             cy="100"
