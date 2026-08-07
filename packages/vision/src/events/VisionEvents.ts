@@ -40,6 +40,10 @@ export type VisionEventMap = {
   'camera:deviceDiff': DeviceDiff;
   'camera:error': { error: Error };
   'engine:statusChange': EngineStateChangeEvent;
+  'tracking:started': void;
+  'tracking:stopped': void;
+  'tracking:lost': void;
+  'tracking:recovered': { count: number };
   'tracking:landmarksUpdated': LandmarksUpdatedEvent;
   'tracking:error': Error;
 };

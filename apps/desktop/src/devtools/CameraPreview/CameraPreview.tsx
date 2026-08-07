@@ -7,7 +7,10 @@ import {
   ResolutionPreset,
   RESOLUTION_PRESETS,
   CameraStateChangeEvent,
+  HandLandmarksResult,
+  TrackingMode,
 } from '@ultron/vision';
+import { SkeletonRenderer } from './SkeletonRenderer';
 
 interface CameraPreviewProps {
   isOpen: boolean;
@@ -16,6 +19,7 @@ interface CameraPreviewProps {
 
 export const CameraPreview: React.FC<CameraPreviewProps> = ({ isOpen, onClose }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [devices, setDevices] = useState<CameraDeviceInfo[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
   const [selectedPreset, setSelectedPreset] = useState<ResolutionPreset>('720p');
@@ -27,6 +31,14 @@ export const CameraPreview: React.FC<CameraPreviewProps> = ({ isOpen, onClose })
   const [frameCount, setFrameCount] = useState<number>(0);
   const [resolution, setResolution] = useState<{ width: number; height: number }>({ width: 1280, height: 720 });
   const [activeDeviceLabel, setActiveDeviceLabel] = useState<string>('None');
+
+  // Tracking State Metrics
+  const [trackingMode, setTrackingMode] = useState<TrackingMode>('hands');
+  const [isMediaPipeLoaded, setIsMediaPipeLoaded] = useState<boolean>(false);
+  const [trackingFps, setTrackingFps] = useState<number>(0);
+  const [inferenceTimeMs, setInferenceTimeMs] = useState<number>(0);
+  const [detectedHandsCount, setDetectedHandsCount] = useState<number>(0);
+  const [isInitializingTracking, setIsInitializingTracking] = useState<boolean>(false);
 
   const visionEngine = getVisionEngine();
 
@@ -53,18 +65,36 @@ export const CameraPreview: React.FC<CameraPreviewProps> = ({ isOpen, onClose })
     return () => cancelAnimationFrame(animId);
   }, [visionEngine]);
 
-  // Video frame process loop
+  // Video frame process & canvas skeleton render loop
   useEffect(() => {
     let animId: number;
     const frameLoop = () => {
       if (videoRef.current && videoRef.current.readyState >= 2) {
         visionEngine.processVideoFrame(videoRef.current);
+
+        const landmarks: HandLandmarksResult[] = visionEngine.getLatestLandmarks();
+        setDetectedHandsCount(landmarks.length);
+
+        if (canvasRef.current && videoRef.current) {
+          const canvas = canvasRef.current;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            canvas.width = videoRef.current.videoWidth || resolution.width;
+            canvas.height = videoRef.current.videoHeight || resolution.height;
+            SkeletonRenderer.renderSkeleton(ctx, landmarks, canvas.width, canvas.height);
+          }
+        }
+
+        const trackingRuntime = visionEngine.getTrackingRuntime();
+        setTrackingFps(trackingRuntime.getTrackingFps());
+        setInferenceTimeMs(trackingRuntime.getInferenceTimeMs());
+        setIsMediaPipeLoaded(trackingRuntime.isMediaPipeLoaded());
       }
       animId = requestAnimationFrame(frameLoop);
     };
     animId = requestAnimationFrame(frameLoop);
     return () => cancelAnimationFrame(animId);
-  }, [visionEngine]);
+  }, [visionEngine, resolution]);
 
   // Subscribe to VisionEventBus events
   useEffect(() => {
@@ -109,6 +139,7 @@ export const CameraPreview: React.FC<CameraPreviewProps> = ({ isOpen, onClose })
       }
       setActiveDeviceLabel('None');
       setCameraFps(0);
+      setDetectedHandsCount(0);
     });
 
     const unsubSwitched = bus.on('camera:switched', (evt: { deviceId: string; stream: MediaStream }) => {
@@ -139,6 +170,7 @@ export const CameraPreview: React.FC<CameraPreviewProps> = ({ isOpen, onClose })
 
     setCameraStatus(visionEngine.getCameraStatus());
     setPermissionState(visionEngine.getCameraPermissionState());
+    setIsMediaPipeLoaded(visionEngine.getTrackingRuntime().isMediaPipeLoaded());
 
     return () => {
       unsubStatus();
@@ -151,6 +183,25 @@ export const CameraPreview: React.FC<CameraPreviewProps> = ({ isOpen, onClose })
       visionEngine.setOnFrameCallback(null);
     };
   }, [visionEngine, devices, selectedDeviceId]);
+
+  const handleInitializeTracking = useCallback(async () => {
+    setIsInitializingTracking(true);
+    try {
+      await visionEngine.initializeHandTracking();
+      setIsMediaPipeLoaded(true);
+      setTrackingMode('hands');
+    } catch (err) {
+      console.error('[CameraPreview] Failed to initialize MediaPipe tracking:', err);
+    } finally {
+      setIsInitializingTracking(false);
+    }
+  }, [visionEngine]);
+
+  const handleToggleTracking = useCallback(() => {
+    const newMode: TrackingMode = trackingMode === 'hands' ? 'disabled' : 'hands';
+    setTrackingMode(newMode);
+    visionEngine.setTrackingMode(newMode);
+  }, [visionEngine, trackingMode]);
 
   const handleRequestPermission = useCallback(async () => {
     const res = await visionEngine.requestCameraPermission();
@@ -178,10 +229,14 @@ export const CameraPreview: React.FC<CameraPreviewProps> = ({ isOpen, onClose })
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
       }
+
+      if (!isMediaPipeLoaded && !isInitializingTracking) {
+        handleInitializeTracking();
+      }
     } catch (err) {
       console.error('[CameraPreview] Failed to start camera:', err);
     }
-  }, [visionEngine, selectedDeviceId, selectedPreset]);
+  }, [visionEngine, selectedDeviceId, selectedPreset, isMediaPipeLoaded, isInitializingTracking, handleInitializeTracking]);
 
   const handleStopCamera = useCallback(async () => {
     await visionEngine.stopCamera();
@@ -254,7 +309,7 @@ export const CameraPreview: React.FC<CameraPreviewProps> = ({ isOpen, onClose })
         </div>
       </div>
 
-      {/* Video Viewport Area */}
+      {/* Video Viewport Area with Canvas Skeleton Overlay */}
       <div className="relative w-full aspect-video bg-black flex items-center justify-center overflow-hidden border-b border-slate-800">
         <video
           ref={videoRef}
@@ -264,8 +319,14 @@ export const CameraPreview: React.FC<CameraPreviewProps> = ({ isOpen, onClose })
           muted
         />
 
+        {/* 21 Spatial Landmark Canvas Skeleton Overlay */}
+        <canvas
+          ref={canvasRef}
+          className="absolute inset-0 w-full h-full pointer-events-none"
+        />
+
         {cameraStatus !== 'active' && cameraStatus !== 'paused' && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center p-4 bg-slate-950/80 text-center space-y-2">
+          <div className="absolute inset-0 flex flex-col items-center justify-center p-4 bg-slate-950/80 text-center space-y-2 z-10">
             {cameraStatus === 'permission_denied' ? (
               <>
                 <span className="text-red-400 font-semibold">Camera Permission Denied</span>
@@ -293,19 +354,20 @@ export const CameraPreview: React.FC<CameraPreviewProps> = ({ isOpen, onClose })
           </div>
         )}
 
-        {/* Live Overlay FPS Badge */}
+        {/* Live Overlay Badges */}
         {(cameraStatus === 'active' || cameraStatus === 'paused') && (
-          <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/75 border border-cyan-500/30 text-[10px] flex space-x-2">
+          <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/80 border border-cyan-500/40 text-[10px] flex space-x-2 z-10">
             <span className="text-cyan-300">Cam: {cameraFps} FPS</span>
             <span className="text-purple-300">Ren: {rendererFps} FPS</span>
+            <span className="text-emerald-300">Trk: {trackingFps} FPS</span>
           </div>
         )}
       </div>
 
       {/* Diagnostics Panel Details */}
-      <div className="p-3 space-y-2.5">
+      <div className="p-3 space-y-2 text-[11px]">
         {/* Status Rows */}
-        <div className="space-y-1 text-[11px] border-b border-slate-800 pb-2">
+        <div className="space-y-1 border-b border-slate-800 pb-2">
           <div className="flex justify-between items-center">
             <span className="text-slate-400">Status</span>
             <span
@@ -349,16 +411,40 @@ export const CameraPreview: React.FC<CameraPreviewProps> = ({ isOpen, onClose })
           </div>
         </div>
 
-        {/* Metrics Rows */}
-        <div className="space-y-1 text-[11px] border-b border-slate-800 pb-2">
+        {/* MediaPipe & Tracking Diagnostics Rows */}
+        <div className="space-y-1 border-b border-slate-800 pb-2">
           <div className="flex justify-between items-center">
-            <span className="text-slate-400">Camera FPS</span>
-            <span className="text-cyan-300 font-bold">{cameraFps}</span>
+            <span className="text-slate-400">MediaPipe</span>
+            <span
+              className={`font-semibold ${
+                isMediaPipeLoaded
+                  ? 'text-emerald-400'
+                  : isInitializingTracking
+                  ? 'text-amber-300 animate-pulse'
+                  : 'text-slate-500'
+              }`}
+            >
+              {isMediaPipeLoaded ? 'Loaded' : isInitializingTracking ? 'Loading...' : 'Not Loaded'}
+            </span>
           </div>
 
           <div className="flex justify-between items-center">
-            <span className="text-slate-400">Renderer FPS</span>
-            <span className="text-purple-300 font-bold">{rendererFps}</span>
+            <span className="text-slate-400">Tracking Mode</span>
+            <span className={`font-semibold ${trackingMode === 'hands' ? 'text-cyan-400' : 'text-slate-500'}`}>
+              {trackingMode.toUpperCase()}
+            </span>
+          </div>
+
+          <div className="flex justify-between items-center">
+            <span className="text-slate-400">Hands Detected</span>
+            <span className={`font-bold ${detectedHandsCount > 0 ? 'text-emerald-400' : 'text-slate-400'}`}>
+              {detectedHandsCount} Hand{detectedHandsCount !== 1 ? 's' : ''}
+            </span>
+          </div>
+
+          <div className="flex justify-between items-center">
+            <span className="text-slate-400">Inference Time</span>
+            <span className="text-purple-300 font-bold">{`${inferenceTimeMs} ms`}</span>
           </div>
 
           <div className="flex justify-between items-center">
@@ -367,13 +453,8 @@ export const CameraPreview: React.FC<CameraPreviewProps> = ({ isOpen, onClose })
           </div>
 
           <div className="flex justify-between items-center">
-            <span className="text-slate-400">MediaPipe</span>
-            <span className="text-slate-500 italic">Not Loaded (Phase 3)</span>
-          </div>
-
-          <div className="flex justify-between items-center">
-            <span className="text-slate-400">Tracking</span>
-            <span className="text-slate-500 italic">Disabled (Phase 3)</span>
+            <span className="text-slate-400">Landmark Smoother</span>
+            <span className="text-emerald-300 font-bold">Enabled (1-Euro)</span>
           </div>
 
           <div className="flex justify-between items-center">
@@ -383,13 +464,13 @@ export const CameraPreview: React.FC<CameraPreviewProps> = ({ isOpen, onClose })
         </div>
 
         {/* Device & Preset Selectors */}
-        <div className="space-y-2 text-[11px]">
+        <div className="space-y-1.5">
           <div>
-            <label className="text-slate-400 block text-[10px] mb-1">Active Camera Device ({devices.length} found)</label>
+            <label className="text-slate-400 block text-[10px] mb-0.5">Active Camera Device ({devices.length} found)</label>
             <select
               value={selectedDeviceId}
               onChange={handleDeviceChange}
-              className="w-full bg-slate-800 border border-slate-700 text-slate-200 rounded p-1.5 focus:border-cyan-500 focus:outline-none"
+              className="w-full bg-slate-800 border border-slate-700 text-slate-200 rounded p-1 focus:border-cyan-500 focus:outline-none"
             >
               {devices.length === 0 && <option value="">No camera devices detected</option>}
               {devices.map((dev) => (
@@ -401,11 +482,11 @@ export const CameraPreview: React.FC<CameraPreviewProps> = ({ isOpen, onClose })
           </div>
 
           <div>
-            <label className="text-slate-400 block text-[10px] mb-1">Resolution Preset</label>
+            <label className="text-slate-400 block text-[10px] mb-0.5">Resolution Preset</label>
             <select
               value={selectedPreset}
               onChange={handlePresetChange}
-              className="w-full bg-slate-800 border border-slate-700 text-slate-200 rounded p-1.5 focus:border-cyan-500 focus:outline-none"
+              className="w-full bg-slate-800 border border-slate-700 text-slate-200 rounded p-1 focus:border-cyan-500 focus:outline-none"
             >
               <option value="720p">720p (1280 × 720 @ 30 FPS)</option>
               <option value="1080p">1080p (1920 × 1080 @ 30 FPS)</option>
@@ -420,21 +501,27 @@ export const CameraPreview: React.FC<CameraPreviewProps> = ({ isOpen, onClose })
             <>
               <button
                 onClick={handleStopCamera}
-                className="flex-1 py-1.5 bg-red-500/20 text-red-300 border border-red-500/40 rounded hover:bg-red-500/30 transition-colors font-semibold"
+                className="flex-1 py-1 bg-red-500/20 text-red-300 border border-red-500/40 rounded hover:bg-red-500/30 transition-colors font-semibold text-[10px]"
               >
                 Stop Camera
               </button>
               <button
                 onClick={handleTogglePause}
-                className="flex-1 py-1.5 bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded hover:bg-amber-500/30 transition-colors font-semibold"
+                className="flex-1 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded hover:bg-amber-500/30 transition-colors font-semibold text-[10px]"
               >
                 {cameraStatus === 'paused' ? 'Resume' : 'Pause'}
+              </button>
+              <button
+                onClick={handleToggleTracking}
+                className="flex-1 py-1 bg-purple-500/20 text-purple-300 border border-purple-500/40 rounded hover:bg-purple-500/30 transition-colors font-semibold text-[10px]"
+              >
+                {trackingMode === 'hands' ? 'Disable Trk' : 'Enable Trk'}
               </button>
             </>
           ) : (
             <button
               onClick={handleStartCamera}
-              className="w-full py-1.5 bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 rounded hover:bg-cyan-500/30 transition-colors font-semibold"
+              className="w-full py-1 bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 rounded hover:bg-cyan-500/30 transition-colors font-semibold"
             >
               Start Camera
             </button>

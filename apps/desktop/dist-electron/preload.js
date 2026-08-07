@@ -1,10 +1,1 @@
-"use strict";
-const electron = require("electron");
-electron.contextBridge.exposeInMainWorld("ultronAPI", {
-  checkHealth: async () => {
-    return await electron.ipcRenderer.invoke("check-health");
-  },
-  onLog: (callback) => {
-    electron.ipcRenderer.on("app-log", (_event, message) => callback(message));
-  }
-});
+"use strict";const e=require("electron");e.contextBridge.exposeInMainWorld("ultronAPI",{checkHealth:async()=>await e.ipcRenderer.invoke("check-health"),onLog:n=>{e.ipcRenderer.on("app-log",(t,r)=>n(r))}});

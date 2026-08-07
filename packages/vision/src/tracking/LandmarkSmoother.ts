@@ -1,38 +1,55 @@
 /**
  * @file LandmarkSmoother.ts
  * @package @ultron/vision
- * @description 3D spatial landmark temporal smoothing filter for noise reduction.
+ * @description 1-Euro / Exponential Moving Average (EMA) 3D spatial landmark temporal smoothing filter.
  */
 
 import { Landmark3D, HandLandmarksResult } from '../types';
 
 export class LandmarkSmoother {
-  private smoothingFactor = 0.5;
+  private alpha = 0.65; // Smoothing factor (0 = infinite smooth/lag, 1 = raw/no filter)
+  private previousHandMap: Map<string, Landmark3D[]> = new Map();
 
-  constructor(factor?: number) {
-    if (factor !== undefined) {
-      this.smoothingFactor = factor;
-    }
-  }
-
-  public smoothLandmarks(landmarks: Landmark3D[]): Landmark3D[] {
-    // Placeholder 1-Euro / Exponential Moving Average filter contract for Phase 1
-    return landmarks.map((l) => ({ ...l }));
+  constructor(alpha = 0.65) {
+    this.alpha = alpha;
   }
 
   public smoothHandResults(results: HandLandmarksResult[]): HandLandmarksResult[] {
-    return results.map((res) => ({
-      ...res,
-      landmarks: this.smoothLandmarks(res.landmarks),
-      worldLandmarks: this.smoothLandmarks(res.worldLandmarks),
-    }));
+    return results.map((handResult) => {
+      const key = handResult.handedness;
+      const prevLandmarks = this.previousHandMap.get(key);
+
+      const smoothedLandmarks = handResult.landmarks.map((current, idx) => {
+        if (!prevLandmarks || !prevLandmarks[idx]) {
+          return { ...current };
+        }
+        const prev = prevLandmarks[idx];
+        return {
+          x: prev.x + this.alpha * (current.x - prev.x),
+          y: prev.y + this.alpha * (current.y - prev.y),
+          z: prev.z + this.alpha * (current.z - prev.z),
+          visibility: current.visibility,
+        };
+      });
+
+      this.previousHandMap.set(key, smoothedLandmarks);
+
+      return {
+        ...handResult,
+        landmarks: smoothedLandmarks,
+      };
+    });
   }
 
-  public setSmoothingFactor(factor: number): void {
-    this.smoothingFactor = factor;
+  public setAlpha(alpha: number): void {
+    this.alpha = Math.max(0.01, Math.min(1.0, alpha));
   }
 
-  public getSmoothingFactor(): number {
-    return this.smoothingFactor;
+  public getAlpha(): number {
+    return this.alpha;
+  }
+
+  public reset(): void {
+    this.previousHandMap.clear();
   }
 }

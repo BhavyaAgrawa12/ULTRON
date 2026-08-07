@@ -1,7 +1,7 @@
 /**
  * @file VisionRuntime.ts
  * @package @ultron/vision
- * @description Internal lifecycle orchestrator coordinating CameraManager, FrameLoop, and VisionEventBus.
+ * @description Internal lifecycle orchestrator coordinating CameraManager, TrackingRuntime, FrameLoop, and VisionEventBus.
  */
 
 import {
@@ -9,28 +9,48 @@ import {
   CameraDeviceInfo,
   CameraPermissionState,
   CameraStatus,
+  HandLandmarksResult,
+  TrackingMode,
   VisionEngineStatus,
 } from '../types';
 import { CameraManager } from '../camera/CameraManager';
 import { FrameLoop, OnFrameCallback, FrameSource } from './FrameLoop';
+import { TrackingRuntime } from '../tracking/TrackingRuntime';
 import { VisionEventBus } from '../events';
+import { ModelLoaderOptions } from '../tracking/ModelLoader';
 
 export class VisionRuntime {
   private status: VisionEngineStatus = 'idle';
   private cameraManager: CameraManager;
+  private trackingRuntime: TrackingRuntime;
   private frameLoop: FrameLoop;
   private eventBus: VisionEventBus;
+  private latestLandmarks: HandLandmarksResult[] = [];
 
   constructor(eventBus?: VisionEventBus) {
     this.eventBus = eventBus || new VisionEventBus();
     this.cameraManager = new CameraManager(this.eventBus);
+    this.trackingRuntime = new TrackingRuntime(this.eventBus);
     this.frameLoop = new FrameLoop();
+
+    // Connect FrameLoop to TrackingRuntime
+    this.frameLoop.setOnFrameCallback((source, metadata) => {
+      if (this.trackingRuntime.isMediaPipeLoaded()) {
+        const results = this.trackingRuntime.processFrame(source, metadata.timestamp);
+        this.latestLandmarks = results;
+      }
+    });
   }
 
-  public async initialize(): Promise<void> {
+  public async initialize(options?: ModelLoaderOptions): Promise<void> {
+    void options;
     this.status = 'starting';
     await this.cameraManager.getDevices();
     this.status = 'idle';
+  }
+
+  public async initializeHandTracking(options?: ModelLoaderOptions): Promise<void> {
+    await this.trackingRuntime.initialize(options);
   }
 
   public async requestCameraPermission(): Promise<CameraPermissionState> {
@@ -49,7 +69,9 @@ export class VisionRuntime {
 
   public async stopCamera(): Promise<void> {
     await this.cameraManager.stop();
+    this.trackingRuntime.stop();
     this.frameLoop.reset();
+    this.latestLandmarks = [];
     this.status = 'idle';
   }
 
@@ -88,7 +110,27 @@ export class VisionRuntime {
   }
 
   public setOnFrameCallback(callback: OnFrameCallback | null): void {
-    this.frameLoop.setOnFrameCallback(callback);
+    this.frameLoop.setOnFrameCallback((source, metadata) => {
+      if (this.trackingRuntime.isMediaPipeLoaded()) {
+        const results = this.trackingRuntime.processFrame(source, metadata.timestamp);
+        this.latestLandmarks = results;
+      }
+      if (callback) {
+        callback(source, metadata);
+      }
+    });
+  }
+
+  public getLatestLandmarks(): HandLandmarksResult[] {
+    return this.latestLandmarks;
+  }
+
+  public setTrackingMode(mode: TrackingMode): void {
+    this.trackingRuntime.setTrackingMode(mode);
+  }
+
+  public getTrackingRuntime(): TrackingRuntime {
+    return this.trackingRuntime;
   }
 
   public getFrameMetrics() {

@@ -4,28 +4,26 @@
  * @description Main public API facade for ULTRON Vision services delegating to internal VisionRuntime.
  */
 
-import { CameraConfig, CameraDeviceInfo, CameraPermissionState, CameraStatus, VisionEngineStatus } from './types';
+import { CameraConfig, CameraDeviceInfo, CameraPermissionState, CameraStatus, HandLandmarksResult, TrackingMode, VisionEngineStatus } from './types';
 import { VisionRuntime, OnFrameCallback, FrameSource } from './runtime';
 import { VisionEventBus } from './events';
 import { CameraManager } from './camera';
-import { HandTracker, LandmarkSmoother, TrackingLoop } from './tracking';
+import { TrackingRuntime, ModelLoaderOptions } from './tracking';
 
 export class VisionEngine {
   private runtime: VisionRuntime;
-  private handTracker: HandTracker;
-  private landmarkSmoother: LandmarkSmoother;
-  private trackingLoop: TrackingLoop;
 
   constructor(config?: Partial<CameraConfig>) {
     void config;
     this.runtime = new VisionRuntime();
-    this.handTracker = new HandTracker();
-    this.landmarkSmoother = new LandmarkSmoother();
-    this.trackingLoop = new TrackingLoop();
   }
 
-  public async initialize(): Promise<void> {
-    return this.runtime.initialize();
+  public async initialize(options?: ModelLoaderOptions): Promise<void> {
+    return this.runtime.initialize(options);
+  }
+
+  public async initializeHandTracking(options?: ModelLoaderOptions): Promise<void> {
+    return this.runtime.initializeHandTracking(options);
   }
 
   public async requestCameraPermission(): Promise<CameraPermissionState> {
@@ -80,6 +78,14 @@ export class VisionEngine {
     this.runtime.setOnFrameCallback(callback);
   }
 
+  public getLatestLandmarks(): HandLandmarksResult[] {
+    return this.runtime.getLatestLandmarks();
+  }
+
+  public setTrackingMode(mode: TrackingMode): void {
+    this.runtime.setTrackingMode(mode);
+  }
+
   public getFrameMetrics() {
     return this.runtime.getFrameMetrics();
   }
@@ -96,16 +102,12 @@ export class VisionEngine {
     return this.runtime.getCameraManager();
   }
 
+  public getTrackingRuntime(): TrackingRuntime {
+    return this.runtime.getTrackingRuntime();
+  }
+
   public getVisionRuntime(): VisionRuntime {
     return this.runtime;
-  }
-
-  public getHandTracker(): HandTracker {
-    return this.handTracker;
-  }
-
-  public getLandmarkSmoother(): LandmarkSmoother {
-    return this.landmarkSmoother;
   }
 
   public async destroy(): Promise<void> {
