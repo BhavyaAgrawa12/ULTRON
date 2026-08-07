@@ -53,31 +53,33 @@ export default function App() {
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#00D9FF]/5 rounded-full blur-[140px] pointer-events-none" />
 
             {/* HELIOS V2 Orb Engine Hero Visual Centerpiece (160px Scale) */}
-            <div className="relative z-10 flex flex-col items-center text-center space-y-8">
-              <Orb engine={orbEngine} size="lg" />
-
-              <div className="space-y-2">
-                <h1
-                  className="text-5xl md:text-6xl font-extrabold tracking-widest text-[#F8FAFC]"
-                  style={{ fontFamily: fontFamilies.heading }}
-                >
-                  ULTRON
-                </h1>
-
-                <p
-                  className="text-xs uppercase tracking-[0.3em] text-[#94A3B8] font-mono"
-                  style={{ fontFamily: fontFamilies.code }}
-                >
-                  Version 0.0.1
-                </p>
-
-                <p
-                  className="text-sm tracking-widest text-[#64748B] font-medium pt-1"
-                  style={{ fontFamily: fontFamilies.body, color: colors.text.muted }}
-                >
-                  Operating Companion Platform
-                </p>
+            <div className="relative z-10 flex flex-col items-center text-center">
+              {/* Orb 160px Centerpiece */}
+              <div className="mb-6">
+                <Orb engine={orbEngine} size="lg" />
               </div>
+
+              {/* Spacing Rhythm: Orb -> 24px (mb-6) -> ULTRON -> 12px (mb-3) -> Version -> 20px (pt-5) -> Subtitle */}
+              <h1
+                className="text-5xl md:text-6xl font-extrabold tracking-widest text-[#F8FAFC] mb-3"
+                style={{ fontFamily: fontFamilies.heading }}
+              >
+                ULTRON
+              </h1>
+
+              <p
+                className="text-xs uppercase tracking-[0.3em] text-[#94A3B8] font-mono pt-1"
+                style={{ fontFamily: fontFamilies.code }}
+              >
+                Version 0.0.1
+              </p>
+
+              <p
+                className="text-sm tracking-widest text-[#64748B] font-medium pt-5"
+                style={{ fontFamily: fontFamilies.body, color: colors.text.muted }}
+              >
+                Operating Companion Platform
+              </p>
             </div>
           </main>
         </div>

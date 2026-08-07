@@ -8,18 +8,20 @@ interface OrbParticlesProps {
 }
 
 export const OrbParticles: React.FC<OrbParticlesProps> = React.memo(({ state }) => {
-  // Selective rendering: particle layer unmounts in non-particle states to preserve 60 FPS
-  if (state !== 'researching' && state !== 'memory') {
+  const count = orbConfig.states[state]?.particleCount || 0;
+
+  // Unmount particle layer when count is 0 to preserve 60 FPS performance
+  if (count <= 0) {
     return null;
   }
 
-  const particleArray = Array.from({ length: orbConfig.particleCount });
+  const particleArray = Array.from({ length: count });
 
   return (
-    <div className="absolute -inset-8 pointer-events-none overflow-visible">
+    <div className="absolute -inset-8 pointer-events-none overflow-visible z-10">
       {particleArray.map((_, i) => {
-        const angle = (i / orbConfig.particleCount) * 360;
-        const radius = 80;
+        const angle = (i / count) * 360;
+        const radius = 85;
         const isMemory = state === 'memory';
 
         return (
@@ -59,7 +61,7 @@ export const OrbParticles: React.FC<OrbParticlesProps> = React.memo(({ state }) 
                   }
             }
             transition={{
-              duration: isMemory ? 2.6 : 3.2,
+              duration: isMemory ? 2.6 : 3.4,
               repeat: Infinity,
               ease: 'easeInOut',
               delay: i * 0.12,

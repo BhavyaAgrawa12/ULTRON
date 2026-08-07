@@ -10,13 +10,18 @@ import { OrbRing } from './OrbRing';
 import { OrbHalo } from './OrbHalo';
 import { OrbParticles } from './OrbParticles';
 
-export const Orb: React.FC<OrbProps> = ({
+interface ExtendedOrbProps extends OrbProps {
+  debugMode?: boolean;
+}
+
+export const Orb: React.FC<ExtendedOrbProps> = ({
   engine: externalEngine,
   state: propState,
-  size = 'lg', // Default size upgraded to lg (160px) for Project HELIOS V2
+  size = 'lg', // Default size: 160px
   className,
+  debugMode = false,
 }) => {
-  // Create or reuse pure TS OrbEngine
+  // Pure TypeScript OrbEngine instance
   const engine = useMemo(() => {
     return externalEngine || createOrbEngine(propState || 'idle');
   }, [externalEngine]);
@@ -92,40 +97,50 @@ export const Orb: React.FC<OrbProps> = ({
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, [reducedMotion, mouseX, mouseY, rotateX, rotateY]);
 
+  // Compute explicit numeric pixel size (e.g. 160px for 'lg') to eliminate layout collapse
+  const sizePx = orbConfig.pixelSizes[size] || 160;
+
   return (
     <motion.div
       ref={containerRef}
+      data-testid="ultron-orb-root"
       className={cn(
-        'relative flex items-center justify-center pointer-events-none select-none perspective-1000',
-        orbConfig.sizes[size],
+        'relative flex items-center justify-center shrink-0 pointer-events-none select-none overflow-visible perspective-1000',
+        debugMode ? 'outline outline-2 outline-red-500' : '',
         className
       )}
-      style={
-        reducedMotion
+      style={{
+        width: `${sizePx}px`,
+        height: `${sizePx}px`,
+        minWidth: `${sizePx}px`,
+        minHeight: `${sizePx}px`,
+        maxWidth: `${sizePx}px`,
+        maxHeight: `${sizePx}px`,
+        ...(reducedMotion
           ? {}
           : {
               x: translateX,
               y: translateY,
               rotateX,
               rotateY,
-            }
-      }
+            }),
+      }}
       aria-label={`ULTRON Orb State: ${currentState}`}
       role="img"
     >
-      {/* 1. Ambient Background Aura Glow */}
+      {/* 1. Ambient Background Aura Glow (z-0) */}
       <OrbGlow state={currentState} />
 
-      {/* 2. Selective Orbiting Particles (researching & memory only) */}
+      {/* 2. Selective Orbiting Particles (z-10) */}
       <OrbParticles state={currentState} />
 
-      {/* 3. Radial Energy Halo Ring */}
+      {/* 3. Radial Energy Halo Ring (z-20) */}
       <OrbHalo state={currentState} />
 
-      {/* 4. Dual Counter-Rotating Energy Rings */}
+      {/* 4. Dual Counter-Rotating Energy Rings (z-30) */}
       <OrbRing state={currentState} />
 
-      {/* 5. Center Sphere Core with Specular Lens Highlight */}
+      {/* 5. Center Sphere Core with Specular Lens Highlight (z-40) */}
       <OrbCore state={currentState} />
     </motion.div>
   );
