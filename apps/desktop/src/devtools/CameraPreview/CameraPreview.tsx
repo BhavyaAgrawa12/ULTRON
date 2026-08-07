@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, memo } from 'react';
 import {
   getVisionEngine,
   CameraDeviceInfo,
@@ -17,32 +17,59 @@ interface CameraPreviewProps {
   onClose: () => void;
 }
 
-export const CameraPreview: React.FC<CameraPreviewProps> = ({ isOpen, onClose }) => {
+interface UiMetrics {
+  cameraFps: number;
+  rendererFps: number;
+  trackingFps: number;
+  inferenceTimeMs: number;
+  latencyMs: number;
+  detectedHandsCount: number;
+  frameCount: number;
+  resolution: { width: number; height: number };
+}
+
+export const CameraPreview: React.FC<CameraPreviewProps> = memo(({ isOpen, onClose }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [devices, setDevices] = useState<CameraDeviceInfo[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
-  const [selectedPreset, setSelectedPreset] = useState<ResolutionPreset>('720p');
+  const [selectedPreset, setSelectedPreset] = useState<ResolutionPreset>('480p');
   const [cameraStatus, setCameraStatus] = useState<CameraStatus>('uninitialized');
   const [permissionState, setPermissionState] = useState<CameraPermissionState>('prompt');
-  const [cameraFps, setCameraFps] = useState<number>(0);
-  const [rendererFps, setRendererFps] = useState<number>(60);
-  const [latencyMs, setLatencyMs] = useState<number>(0);
-  const [frameCount, setFrameCount] = useState<number>(0);
-  const [resolution, setResolution] = useState<{ width: number; height: number }>({ width: 1280, height: 720 });
   const [activeDeviceLabel, setActiveDeviceLabel] = useState<string>('None');
 
-  // Tracking State Metrics
+  // Tracking State
   const [trackingMode, setTrackingMode] = useState<TrackingMode>('hands');
   const [isMediaPipeLoaded, setIsMediaPipeLoaded] = useState<boolean>(false);
-  const [trackingFps, setTrackingFps] = useState<number>(0);
-  const [inferenceTimeMs, setInferenceTimeMs] = useState<number>(0);
-  const [detectedHandsCount, setDetectedHandsCount] = useState<number>(0);
   const [isInitializingTracking, setIsInitializingTracking] = useState<boolean>(false);
+
+  // Throttled UI Metrics State (Updated at 2Hz / every 500ms, ZERO per-frame setState!)
+  const [uiMetrics, setUiMetrics] = useState<UiMetrics>({
+    cameraFps: 0,
+    rendererFps: 60,
+    trackingFps: 0,
+    inferenceTimeMs: 0,
+    latencyMs: 0,
+    detectedHandsCount: 0,
+    frameCount: 0,
+    resolution: { width: 640, height: 480 },
+  });
+
+  // Mutable High-Frequency Metrics Reference (Zero React re-render overhead per frame)
+  const metricsRef = useRef<UiMetrics>({
+    cameraFps: 0,
+    rendererFps: 60,
+    trackingFps: 0,
+    inferenceTimeMs: 0,
+    latencyMs: 0,
+    detectedHandsCount: 0,
+    frameCount: 0,
+    resolution: { width: 640, height: 480 },
+  });
 
   const visionEngine = getVisionEngine();
 
-  // Renderer FPS calculation loop
+  // 1. High-frequency 60 FPS Renderer Loop (Strictly zero setState inside!)
   useEffect(() => {
     let animId: number;
     let lastTime = performance.now();
@@ -53,7 +80,7 @@ export const CameraPreview: React.FC<CameraPreviewProps> = ({ isOpen, onClose })
       count++;
       if (now - lastTime >= 1000) {
         const currentRendererFps = Math.round((count * 1000) / (now - lastTime));
-        setRendererFps(currentRendererFps);
+        metricsRef.current.rendererFps = currentRendererFps;
         visionEngine.updateRendererFps(currentRendererFps);
         count = 0;
         lastTime = now;
@@ -65,7 +92,7 @@ export const CameraPreview: React.FC<CameraPreviewProps> = ({ isOpen, onClose })
     return () => cancelAnimationFrame(animId);
   }, [visionEngine]);
 
-  // Video frame process & canvas skeleton render loop
+  // 2. Direct Canvas Skeleton Drawing & Frame Processing Loop (Zero setState!)
   useEffect(() => {
     let animId: number;
     const frameLoop = () => {
@@ -73,30 +100,39 @@ export const CameraPreview: React.FC<CameraPreviewProps> = ({ isOpen, onClose })
         visionEngine.processVideoFrame(videoRef.current);
 
         const landmarks: HandLandmarksResult[] = visionEngine.getLatestLandmarks();
-        setDetectedHandsCount(landmarks.length);
+        metricsRef.current.detectedHandsCount = landmarks.length;
 
         if (canvasRef.current && videoRef.current) {
           const canvas = canvasRef.current;
           const ctx = canvas.getContext('2d');
           if (ctx) {
-            canvas.width = videoRef.current.videoWidth || resolution.width;
-            canvas.height = videoRef.current.videoHeight || resolution.height;
+            canvas.width = videoRef.current.videoWidth || metricsRef.current.resolution.width;
+            canvas.height = videoRef.current.videoHeight || metricsRef.current.resolution.height;
             SkeletonRenderer.renderSkeleton(ctx, landmarks, canvas.width, canvas.height);
           }
         }
 
         const trackingRuntime = visionEngine.getTrackingRuntime();
-        setTrackingFps(trackingRuntime.getTrackingFps());
-        setInferenceTimeMs(trackingRuntime.getInferenceTimeMs());
-        setIsMediaPipeLoaded(trackingRuntime.isMediaPipeLoaded());
+        metricsRef.current.trackingFps = trackingRuntime.getTrackingFps();
+        metricsRef.current.inferenceTimeMs = trackingRuntime.getInferenceTimeMs();
       }
       animId = requestAnimationFrame(frameLoop);
     };
     animId = requestAnimationFrame(frameLoop);
     return () => cancelAnimationFrame(animId);
-  }, [visionEngine, resolution]);
+  }, [visionEngine]);
 
-  // Subscribe to VisionEventBus events
+  // 3. Low-Frequency 500ms Interval UI Throttler (Triggers React re-render only 2 times/sec!)
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setUiMetrics({ ...metricsRef.current });
+      setIsMediaPipeLoaded(visionEngine.getTrackingRuntime().isMediaPipeLoaded());
+    }, 500);
+
+    return () => clearInterval(timer);
+  }, [visionEngine]);
+
+  // 4. Subscribe to VisionEventBus events
   useEffect(() => {
     const bus = visionEngine.getEventBus();
 
@@ -138,8 +174,8 @@ export const CameraPreview: React.FC<CameraPreviewProps> = ({ isOpen, onClose })
         videoRef.current.srcObject = null;
       }
       setActiveDeviceLabel('None');
-      setCameraFps(0);
-      setDetectedHandsCount(0);
+      metricsRef.current.cameraFps = 0;
+      metricsRef.current.detectedHandsCount = 0;
     });
 
     const unsubSwitched = bus.on('camera:switched', (evt: { deviceId: string; stream: MediaStream }) => {
@@ -152,12 +188,12 @@ export const CameraPreview: React.FC<CameraPreviewProps> = ({ isOpen, onClose })
       }
     });
 
-    // Frame callback subscription for metrics
+    // Frame callback subscription for metrics (Updates ref without re-render)
     visionEngine.setOnFrameCallback((_source, metadata) => {
-      setCameraFps(metadata.cameraFps);
-      setLatencyMs(metadata.latencyMs);
-      setResolution({ width: metadata.width, height: metadata.height });
-      setFrameCount(metadata.frameId);
+      metricsRef.current.cameraFps = metadata.cameraFps;
+      metricsRef.current.latencyMs = metadata.latencyMs;
+      metricsRef.current.resolution = { width: metadata.width, height: metadata.height };
+      metricsRef.current.frameCount = metadata.frameId;
     });
 
     // Initialize device list
@@ -170,7 +206,6 @@ export const CameraPreview: React.FC<CameraPreviewProps> = ({ isOpen, onClose })
 
     setCameraStatus(visionEngine.getCameraStatus());
     setPermissionState(visionEngine.getCameraPermissionState());
-    setIsMediaPipeLoaded(visionEngine.getTrackingRuntime().isMediaPipeLoaded());
 
     return () => {
       unsubStatus();
@@ -216,8 +251,8 @@ export const CameraPreview: React.FC<CameraPreviewProps> = ({ isOpen, onClose })
 
   const handleStartCamera = useCallback(async () => {
     try {
-      const targetPreset = selectedPreset === 'custom' ? '720p' : selectedPreset;
-      const resConfig = RESOLUTION_PRESETS[targetPreset] || RESOLUTION_PRESETS['720p'];
+      const targetPreset = selectedPreset === 'custom' ? '480p' : selectedPreset;
+      const resConfig = RESOLUTION_PRESETS[targetPreset] || RESOLUTION_PRESETS['480p'];
       const stream = await visionEngine.startCamera({
         deviceId: selectedDeviceId || undefined,
         resolution: resConfig,
@@ -272,8 +307,8 @@ export const CameraPreview: React.FC<CameraPreviewProps> = ({ isOpen, onClose })
       const newPreset = e.target.value as ResolutionPreset;
       setSelectedPreset(newPreset);
       if (cameraStatus === 'active') {
-        const targetKey = newPreset === 'custom' ? '720p' : newPreset;
-        const resConfig = RESOLUTION_PRESETS[targetKey] || RESOLUTION_PRESETS['720p'];
+        const targetKey = newPreset === 'custom' ? '480p' : newPreset;
+        const resConfig = RESOLUTION_PRESETS[targetKey] || RESOLUTION_PRESETS['480p'];
         const stream = await visionEngine.startCamera({
           deviceId: selectedDeviceId || undefined,
           resolution: resConfig,
@@ -309,7 +344,7 @@ export const CameraPreview: React.FC<CameraPreviewProps> = ({ isOpen, onClose })
         </div>
       </div>
 
-      {/* Video Viewport Area with Canvas Skeleton Overlay */}
+      {/* Video Viewport Area with Direct Canvas Skeleton Overlay */}
       <div className="relative w-full aspect-video bg-black flex items-center justify-center overflow-hidden border-b border-slate-800">
         <video
           ref={videoRef}
@@ -354,12 +389,12 @@ export const CameraPreview: React.FC<CameraPreviewProps> = ({ isOpen, onClose })
           </div>
         )}
 
-        {/* Live Overlay Badges */}
+        {/* Live Overlay FPS Badges (Throttled via uiMetrics) */}
         {(cameraStatus === 'active' || cameraStatus === 'paused') && (
           <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/80 border border-cyan-500/40 text-[10px] flex space-x-2 z-10">
-            <span className="text-cyan-300">Cam: {cameraFps} FPS</span>
-            <span className="text-purple-300">Ren: {rendererFps} FPS</span>
-            <span className="text-emerald-300">Trk: {trackingFps} FPS</span>
+            <span className="text-cyan-300 font-bold">Cam: {uiMetrics.cameraFps} FPS</span>
+            <span className="text-purple-300 font-bold">Ren: {uiMetrics.rendererFps} FPS</span>
+            <span className="text-emerald-300 font-bold">Trk: {uiMetrics.trackingFps} FPS</span>
           </div>
         )}
       </div>
@@ -407,7 +442,7 @@ export const CameraPreview: React.FC<CameraPreviewProps> = ({ isOpen, onClose })
 
           <div className="flex justify-between items-center">
             <span className="text-slate-400">Resolution</span>
-            <span className="text-slate-200 font-bold">{`${resolution.width}×${resolution.height}`}</span>
+            <span className="text-slate-200 font-bold">{`${uiMetrics.resolution.width}×${uiMetrics.resolution.height}`}</span>
           </div>
         </div>
 
@@ -437,19 +472,19 @@ export const CameraPreview: React.FC<CameraPreviewProps> = ({ isOpen, onClose })
 
           <div className="flex justify-between items-center">
             <span className="text-slate-400">Hands Detected</span>
-            <span className={`font-bold ${detectedHandsCount > 0 ? 'text-emerald-400' : 'text-slate-400'}`}>
-              {detectedHandsCount} Hand{detectedHandsCount !== 1 ? 's' : ''}
+            <span className={`font-bold ${uiMetrics.detectedHandsCount > 0 ? 'text-emerald-400' : 'text-slate-400'}`}>
+              {uiMetrics.detectedHandsCount} Hand{uiMetrics.detectedHandsCount !== 1 ? 's' : ''}
             </span>
           </div>
 
           <div className="flex justify-between items-center">
             <span className="text-slate-400">Inference Time</span>
-            <span className="text-purple-300 font-bold">{`${inferenceTimeMs} ms`}</span>
+            <span className="text-purple-300 font-bold">{`${uiMetrics.inferenceTimeMs} ms`}</span>
           </div>
 
           <div className="flex justify-between items-center">
             <span className="text-slate-400">Startup Latency</span>
-            <span className="text-emerald-300 font-bold">{`${latencyMs} ms`}</span>
+            <span className="text-emerald-300 font-bold">{`${uiMetrics.latencyMs} ms`}</span>
           </div>
 
           <div className="flex justify-between items-center">
@@ -459,7 +494,7 @@ export const CameraPreview: React.FC<CameraPreviewProps> = ({ isOpen, onClose })
 
           <div className="flex justify-between items-center">
             <span className="text-slate-400">Frame Count</span>
-            <span className="text-amber-300 font-mono font-bold">{frameCount}</span>
+            <span className="text-amber-300 font-mono font-bold">{uiMetrics.frameCount}</span>
           </div>
         </div>
 
@@ -482,15 +517,15 @@ export const CameraPreview: React.FC<CameraPreviewProps> = ({ isOpen, onClose })
           </div>
 
           <div>
-            <label className="text-slate-400 block text-[10px] mb-0.5">Resolution Preset</label>
+            <label className="text-slate-400 block text-[10px] mb-0.5">Resolution Preset (Default 480p)</label>
             <select
               value={selectedPreset}
               onChange={handlePresetChange}
               className="w-full bg-slate-800 border border-slate-700 text-slate-200 rounded p-1 focus:border-cyan-500 focus:outline-none"
             >
+              <option value="480p">480p (640 × 480 @ 30 FPS) [Fastest]</option>
               <option value="720p">720p (1280 × 720 @ 30 FPS)</option>
               <option value="1080p">1080p (1920 × 1080 @ 30 FPS)</option>
-              <option value="480p">480p (640 × 480 @ 30 FPS)</option>
             </select>
           </div>
         </div>
@@ -530,4 +565,6 @@ export const CameraPreview: React.FC<CameraPreviewProps> = ({ isOpen, onClose })
       </div>
     </div>
   );
-};
+});
+
+CameraPreview.displayName = 'CameraPreview';
