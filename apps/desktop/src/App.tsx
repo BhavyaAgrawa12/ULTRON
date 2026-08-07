@@ -1,15 +1,21 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   ThemeProvider,
   SidebarShell,
+  Orb,
+  createOrbEngine,
   colors,
   fontFamilies,
 } from '@ultron/ui';
 import { Cpu, Layers, Activity, Shield } from 'lucide-react';
 import { TitleBar } from './components/TitleBar';
 import { StatusBar } from './components/StatusBar';
+import { OrbPlayground } from './devtools/OrbPlayground/OrbPlayground';
 
 export default function App() {
+  // Pure TypeScript OrbEngine Instance
+  const orbEngine = useMemo(() => createOrbEngine('idle'), []);
+
   return (
     <ThemeProvider>
       <div className="relative h-screen w-screen flex flex-col bg-[#05070A] text-[#F8FAFC] overflow-hidden select-none">
@@ -45,34 +51,43 @@ export default function App() {
               }}
             />
 
-            {/* Centered Typography Container */}
-            <div className="relative z-10 flex flex-col items-center text-center space-y-3">
-              <h1
-                className="text-6xl md:text-7xl font-extrabold tracking-widest text-[#F8FAFC]"
-                style={{ fontFamily: fontFamilies.heading }}
-              >
-                ULTRON
-              </h1>
+            {/* HELIOS Orb Engine Visual Centerpiece */}
+            <div className="relative z-10 flex flex-col items-center text-center space-y-6">
+              <Orb engine={orbEngine} size="lg" />
 
-              <p
-                className="text-xs uppercase tracking-[0.3em] text-[#94A3B8] font-mono"
-                style={{ fontFamily: fontFamilies.code }}
-              >
-                Version 0.0.1
-              </p>
+              <div className="space-y-2">
+                <h1
+                  className="text-5xl md:text-6xl font-extrabold tracking-widest text-[#F8FAFC]"
+                  style={{ fontFamily: fontFamilies.heading }}
+                >
+                  ULTRON
+                </h1>
 
-              <p
-                className="text-sm tracking-widest text-[#64748B] font-medium pt-2"
-                style={{ fontFamily: fontFamilies.body, color: colors.text.muted }}
-              >
-                Operating Companion Platform
-              </p>
+                <p
+                  className="text-xs uppercase tracking-[0.3em] text-[#94A3B8] font-mono"
+                  style={{ fontFamily: fontFamilies.code }}
+                >
+                  Version 0.0.1
+                </p>
+
+                <p
+                  className="text-sm tracking-widest text-[#64748B] font-medium pt-1"
+                  style={{ fontFamily: fontFamilies.body, color: colors.text.muted }}
+                >
+                  Operating Companion Platform
+                </p>
+              </div>
             </div>
           </main>
         </div>
 
         {/* Bottom Status Bar (32px) */}
         <StatusBar />
+
+        {/* Development-Only Orb Playground */}
+        {process.env.NODE_ENV !== 'production' && (
+          <OrbPlayground engine={orbEngine} />
+        )}
       </div>
     </ThemeProvider>
   );
