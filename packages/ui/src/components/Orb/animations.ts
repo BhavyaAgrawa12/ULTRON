@@ -2,9 +2,14 @@ import { Variants } from 'framer-motion';
 
 export const coreVariants: Variants = {
   idle: {
-    scale: [1, 1.04, 1],
-    opacity: [0.92, 1, 0.92],
-    transition: { duration: 3.8, repeat: Infinity, ease: 'easeInOut' },
+    scale: [1, 1.025, 1], // Breathing strictly under 3%
+    y: [0, -6, 0], // Micro floating offset
+    opacity: [0.93, 1, 0.93],
+    transition: {
+      scale: { duration: 3.6, repeat: Infinity, ease: 'easeInOut', delay: 0.6 }, // Phase-shifted breathing
+      y: { duration: 4.2, repeat: Infinity, ease: 'easeInOut', delay: 1.2 }, // Phase-shifted floating
+      opacity: { duration: 3, repeat: Infinity, ease: 'easeInOut' },
+    },
   },
   wake: {
     scale: [0.85, 1.2, 1.02, 1],
@@ -12,30 +17,30 @@ export const coreVariants: Variants = {
     transition: { duration: 0.85, ease: [0.16, 1, 0.3, 1] },
   },
   thinking: {
-    scale: [0.98, 1.05, 0.98],
+    scale: [0.98, 1.04, 0.98],
     rotate: [0, 180, 360],
     transition: { duration: 3.2, repeat: Infinity, ease: 'easeInOut' },
   },
   listening: {
-    scale: [1, 1.07, 1],
+    scale: [1, 1.06, 1],
     opacity: [0.85, 1, 0.85],
     transition: { duration: 2.2, repeat: Infinity, ease: 'easeInOut' },
   },
   speaking: {
-    scale: [1, 1.09, 0.97, 1.05, 1],
+    scale: [1, 1.08, 0.97, 1.05, 1],
     transition: { duration: 1.4, repeat: Infinity, ease: 'easeInOut' },
   },
   executing: {
-    scale: [1, 1.08, 1],
+    scale: [1, 1.07, 1],
     rotate: [0, 360],
     transition: { duration: 1.8, repeat: Infinity, ease: 'linear' },
   },
   researching: {
-    scale: [0.98, 1.06, 0.98],
+    scale: [0.98, 1.05, 0.98],
     transition: { duration: 2.4, repeat: Infinity, ease: 'easeInOut' },
   },
   memory: {
-    scale: [1.06, 0.94, 1.06],
+    scale: [1.05, 0.95, 1.05],
     opacity: [0.88, 1, 0.88],
     transition: { duration: 2.8, repeat: Infinity, ease: 'easeInOut' },
   },
@@ -51,7 +56,7 @@ export const coreVariants: Variants = {
   },
 };
 
-// Ambient Ring Rotations (25s - 30s) so rings NEVER look like a loading spinner
+// SVG Outer Ring Clockwise Rotation (28s) — Ambient Motion, NOT a loading spinner
 export const outerRingVariants: Variants = {
   idle: {
     rotate: [0, 360],
@@ -104,6 +109,7 @@ export const outerRingVariants: Variants = {
   },
 };
 
+// SVG Inner Ring Counter-Clockwise Rotation (22s)
 export const innerRingVariants: Variants = {
   idle: {
     rotate: [360, 0],

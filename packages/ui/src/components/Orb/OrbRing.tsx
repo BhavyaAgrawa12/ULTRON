@@ -13,30 +13,102 @@ export const OrbRing: React.FC<OrbRingProps> = React.memo(({ state }) => {
 
   return (
     <>
-      {/* Outer Energy Ring */}
+      {/* Outer SVG Energy Ring with Vector Dashed Path & Orbiting Energy Nodes */}
       <motion.div
-        className="absolute -inset-3 rounded-full border border-white/25 pointer-events-none"
-        style={{
-          borderColor: currentConfig.primary,
-          opacity: currentConfig.ringOpacity,
-          boxShadow: `0 0 20px ${currentConfig.shadow}`,
-        }}
+        className="absolute -inset-6 pointer-events-none z-30"
         variants={outerRingVariants}
         animate={state}
       >
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-white/90 shadow-[0_0_10px_#ffffff]" />
+        <svg
+          viewBox="0 0 200 200"
+          className="w-full h-full overflow-visible"
+          style={{ opacity: currentConfig.ringOpacity }}
+        >
+          <defs>
+            <linearGradient id="heliosOuterRingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor={currentConfig.primary} stopOpacity="0.9" />
+              <stop offset="50%" stopColor={currentConfig.secondary} stopOpacity="0.4" />
+              <stop offset="100%" stopColor={currentConfig.primary} stopOpacity="0.1" />
+            </linearGradient>
+            <filter id="nodeGlow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="2.5" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+
+          {/* Outer Main Vector Ring Path */}
+          <circle
+            cx="100"
+            cy="100"
+            r="92"
+            fill="none"
+            stroke="url(#heliosOuterRingGrad)"
+            strokeWidth="1.5"
+            strokeDasharray="18 8 40 12"
+          />
+
+          {/* Orbiting Energy Satellite Node 1 */}
+          <circle
+            cx="100"
+            cy="8"
+            r="3.5"
+            fill="#FFFFFF"
+            filter="url(#nodeGlow)"
+          />
+
+          {/* Orbiting Energy Satellite Node 2 */}
+          <circle
+            cx="100"
+            cy="192"
+            r="2.5"
+            fill={currentConfig.primary}
+            filter="url(#nodeGlow)"
+          />
+        </svg>
       </motion.div>
 
-      {/* Secondary Counter-Rotating Ring */}
+      {/* Inner Counter-Rotating SVG Secondary Ring */}
       <motion.div
-        className="absolute -inset-1.5 rounded-full border border-dashed border-white/15 pointer-events-none"
-        style={{
-          borderColor: currentConfig.secondary,
-          opacity: currentConfig.ringOpacity * 0.7,
-        }}
+        className="absolute -inset-3 pointer-events-none z-30"
         variants={innerRingVariants}
         animate={state}
-      />
+      >
+        <svg
+          viewBox="0 0 200 200"
+          className="w-full h-full overflow-visible"
+          style={{ opacity: currentConfig.ringOpacity * 0.75 }}
+        >
+          <defs>
+            <linearGradient id="heliosInnerRingGrad" x1="100%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor={currentConfig.secondary} stopOpacity="0.8" />
+              <stop offset="100%" stopColor={currentConfig.primary} stopOpacity="0.2" />
+            </linearGradient>
+          </defs>
+
+          {/* Inner Counter Vector Ring Path */}
+          <circle
+            cx="100"
+            cy="100"
+            r="86"
+            fill="none"
+            stroke="url(#heliosInnerRingGrad)"
+            strokeWidth="1.2"
+            strokeDasharray="6 6 30 10"
+          />
+
+          {/* Counter Node */}
+          <circle
+            cx="186"
+            cy="100"
+            r="2.5"
+            fill="#FFFFFF"
+            filter="url(#nodeGlow)"
+          />
+        </svg>
+      </motion.div>
     </>
   );
 });
