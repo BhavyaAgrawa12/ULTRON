@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   ThemeProvider,
   SidebarShell,
@@ -7,14 +7,30 @@ import {
   colors,
   fontFamilies,
 } from '@ultron/ui';
-import { Cpu, Layers, Activity, Shield } from 'lucide-react';
+import { Cpu, Layers, Activity, Shield, Camera } from 'lucide-react';
 import { TitleBar } from './components/TitleBar';
 import { StatusBar } from './components/StatusBar';
 import { OrbPlayground } from './devtools/OrbPlayground/OrbPlayground';
+import { CameraPreview } from './devtools/CameraPreview/CameraPreview';
 
 export default function App() {
   // Pure TypeScript OrbEngine Instance
   const orbEngine = useMemo(() => createOrbEngine('idle'), []);
+
+  // Devtools Camera Preview Overlay State
+  const [isCameraPreviewOpen, setIsCameraPreviewOpen] = useState(false);
+
+  // Ctrl + Shift + V Keyboard Shortcut Toggle
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && (e.key === 'V' || e.key === 'v')) {
+        e.preventDefault();
+        setIsCameraPreviewOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   return (
     <ThemeProvider>
@@ -38,6 +54,19 @@ export default function App() {
             <div className="p-2.5 rounded-lg bg-[#121821] text-[#94A3B8] border border-[#1E293B]">
               <Shield className="w-5 h-5" />
             </div>
+
+            {/* Vision Camera Preview Toggle Icon */}
+            <button
+              onClick={() => setIsCameraPreviewOpen((prev) => !prev)}
+              className={`p-2.5 rounded-lg border transition-colors ${
+                isCameraPreviewOpen
+                  ? 'bg-[#00D9FF]/20 text-[#00D9FF] border-[#00D9FF]/50'
+                  : 'bg-[#121821] text-[#94A3B8] border-[#1E293B] hover:text-[#00D9FF]'
+              }`}
+              title="Toggle Vision Camera Diagnostics (Ctrl+Shift+V)"
+            >
+              <Camera className="w-5 h-5" />
+            </button>
           </SidebarShell>
 
           {/* Main Workspace (Centered Hero Element) */}
@@ -91,6 +120,12 @@ export default function App() {
         {process.env.NODE_ENV !== 'production' && (
           <OrbPlayground engine={orbEngine} />
         )}
+
+        {/* Development-Only Vision Camera Preview Diagnostics Panel */}
+        <CameraPreview
+          isOpen={isCameraPreviewOpen}
+          onClose={() => setIsCameraPreviewOpen(false)}
+        />
       </div>
     </ThemeProvider>
   );

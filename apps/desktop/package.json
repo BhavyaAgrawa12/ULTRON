@@ -14,6 +14,7 @@
     "@tailwindcss/vite": "^4.0.0",
     "@ultron/shared": "workspace:*",
     "@ultron/ui": "workspace:*",
+    "@ultron/vision": "workspace:*",
     "framer-motion": "^12.4.7",
     "lucide-react": "^0.475.0",
     "react": "^19.0.0",

@@ -1,2 +1,118 @@
-"use strict";const s=require("electron"),a=require("node:path"),d=require("node:fs"),w=require("node:child_process"),m=require("node:http");let u=null,l=null;function c(e,n=!1){const i=`[${new Date().toISOString()}] ${n?"[ERROR]":"[INFO]"} ${e}
-`;console.log(i.trim());try{const r=a.resolve(__dirname,"../../logs");d.existsSync(r)||d.mkdirSync(r,{recursive:!0});const h=a.join(r,"ultron.log");d.appendFileSync(h,i,"utf-8")}catch(r){console.error("Failed writing log:",r)}}function p(){return new Promise((e,n)=>{const t=m.get("http://127.0.0.1:8000/health",o=>{let i="";o.on("data",r=>i+=r),o.on("end",()=>{try{const r=JSON.parse(i);e(r)}catch(r){n(r)}})});t.on("error",o=>n(o)),t.setTimeout(2e3,()=>{t.destroy(),n(new Error("Timeout"))})})}async function f(){c("Backend Started");let e=0;const n=15;for(;e<n;){try{const t=await p();if(t&&t.status==="ok")return c("Health Check Passed"),!0}catch{if(!l&&e===0){const t=a.resolve(__dirname,"../../"),o=a.join(t,"services/core-api");try{l=w.spawn("python",["-m","uvicorn","app.main:app","--host","127.0.0.1","--port","8000"],{cwd:o,shell:!0,stdio:"ignore"})}catch(i){c(`Failed to spawn Python backend: ${String(i)}`,!0)}}}e++,await new Promise(t=>setTimeout(t,1e3))}return!1}function g(){c("Electron Started"),u=new s.BrowserWindow({width:960,height:640,title:"ULTRON",backgroundColor:"#000000",autoHideMenuBar:!0,webPreferences:{preload:a.join(__dirname,"preload.js"),nodeIntegration:!1,contextIsolation:!0}});const e=process.env.VITE_DEV_SERVER_URL;e?u.loadURL(e):u.loadFile(a.join(__dirname,"../dist/index.html"))}s.app.whenReady().then(async()=>{g(),f(),s.ipcMain.handle("check-health",async()=>{try{return await p()}catch(e){return{status:"offline",error:String(e)}}})});s.app.on("window-all-closed",()=>{l&&l.kill(),process.platform!=="darwin"&&s.app.quit()});
+"use strict";
+const electron = require("electron");
+const path = require("node:path");
+const fs = require("node:fs");
+const node_child_process = require("node:child_process");
+const http = require("node:http");
+let mainWindow = null;
+let pythonProcess = null;
+function writeLog(message, isError = false) {
+  const timestamp = (/* @__PURE__ */ new Date()).toISOString();
+  const tag = isError ? "[ERROR]" : "[INFO]";
+  const entry = `[${timestamp}] ${tag} ${message}
+`;
+  console.log(entry.trim());
+  try {
+    const rootLogsDir = path.resolve(__dirname, "../../logs");
+    if (!fs.existsSync(rootLogsDir)) {
+      fs.mkdirSync(rootLogsDir, { recursive: true });
+    }
+    const logFilePath = path.join(rootLogsDir, "ultron.log");
+    fs.appendFileSync(logFilePath, entry, "utf-8");
+  } catch (err) {
+    console.error("Failed writing log:", err);
+  }
+}
+function checkBackendHealth() {
+  return new Promise((resolve, reject) => {
+    const req = http.get("http://127.0.0.1:8000/health", (res) => {
+      let data = "";
+      res.on("data", (chunk) => data += chunk);
+      res.on("end", () => {
+        try {
+          const parsed = JSON.parse(data);
+          resolve(parsed);
+        } catch (e) {
+          reject(e);
+        }
+      });
+    });
+    req.on("error", (err) => reject(err));
+    req.setTimeout(2e3, () => {
+      req.destroy();
+      reject(new Error("Timeout"));
+    });
+  });
+}
+async function startBackendAndPoll() {
+  writeLog("Backend Started");
+  let attempts = 0;
+  const maxAttempts = 15;
+  while (attempts < maxAttempts) {
+    try {
+      const res = await checkBackendHealth();
+      if (res && res.status === "ok") {
+        writeLog("Health Check Passed");
+        return true;
+      }
+    } catch {
+      if (!pythonProcess && attempts === 0) {
+        const rootDir = path.resolve(__dirname, "../../");
+        const coreApiDir = path.join(rootDir, "services/core-api");
+        try {
+          pythonProcess = node_child_process.spawn("python", ["-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8000"], {
+            cwd: coreApiDir,
+            shell: true,
+            stdio: "ignore"
+          });
+        } catch (e) {
+          writeLog(`Failed to spawn Python backend: ${String(e)}`, true);
+        }
+      }
+    }
+    attempts++;
+    await new Promise((r) => setTimeout(r, 1e3));
+  }
+  return false;
+}
+function createWindow() {
+  writeLog("Electron Started");
+  mainWindow = new electron.BrowserWindow({
+    width: 960,
+    height: 640,
+    title: "ULTRON",
+    backgroundColor: "#000000",
+    autoHideMenuBar: true,
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+      nodeIntegration: false,
+      contextIsolation: true
+    }
+  });
+  const devServerUrl = process.env.VITE_DEV_SERVER_URL;
+  if (devServerUrl) {
+    mainWindow.loadURL(devServerUrl);
+  } else {
+    mainWindow.loadFile(path.join(__dirname, "../dist/index.html"));
+  }
+}
+electron.app.whenReady().then(async () => {
+  createWindow();
+  startBackendAndPoll();
+  electron.ipcMain.handle("check-health", async () => {
+    try {
+      const res = await checkBackendHealth();
+      return res;
+    } catch (e) {
+      return { status: "offline", error: String(e) };
+    }
+  });
+});
+electron.app.on("window-all-closed", () => {
+  if (pythonProcess) {
+    pythonProcess.kill();
+  }
+  if (process.platform !== "darwin") {
+    electron.app.quit();
+  }
+});

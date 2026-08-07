@@ -43,6 +43,9 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, 'src'),
+      '@ultron/ui': path.resolve(__dirname, '../../packages/ui/src/index.ts'),
+      '@ultron/shared': path.resolve(__dirname, '../../packages/shared/src/index.ts'),
+      '@ultron/vision': path.resolve(__dirname, '../../packages/vision/src/index.ts'),
     },
   },
   server: {

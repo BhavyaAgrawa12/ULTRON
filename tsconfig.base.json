@@ -21,7 +21,8 @@
       "@ultron/automation": ["packages/automation/src/index.ts"],
       "@ultron/ai-router": ["packages/ai-router/src/index.ts"],
       "@ultron/device": ["packages/device/src/index.ts"],
-      "@ultron/plugin": ["packages/plugin/src/index.ts"]
+      "@ultron/plugin": ["packages/plugin/src/index.ts"],
+      "@ultron/vision": ["packages/vision/src/index.ts"]
     }
   }
 }

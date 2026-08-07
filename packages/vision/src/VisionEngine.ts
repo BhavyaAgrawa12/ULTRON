@@ -1,64 +1,103 @@
 /**
  * @file VisionEngine.ts
  * @package @ultron/vision
- * @description Main orchestrator engine for ULTRON Vision services.
+ * @description Main public API facade for ULTRON Vision services delegating to internal VisionRuntime.
  */
 
-import { VisionConfig, VisionEngineStatus } from './types';
+import { CameraConfig, CameraDeviceInfo, CameraPermissionState, CameraStatus, VisionEngineStatus } from './types';
+import { VisionRuntime, OnFrameCallback, FrameSource } from './runtime';
+import { VisionEventBus } from './events';
 import { CameraManager } from './camera';
 import { HandTracker, LandmarkSmoother, TrackingLoop } from './tracking';
-import { VisionEventBus } from './events';
 
 export class VisionEngine {
-  private status: VisionEngineStatus = 'idle';
-  private cameraManager: CameraManager;
+  private runtime: VisionRuntime;
   private handTracker: HandTracker;
   private landmarkSmoother: LandmarkSmoother;
   private trackingLoop: TrackingLoop;
-  private eventBus: VisionEventBus;
 
-  constructor(private config?: Partial<VisionConfig>) {
-    this.cameraManager = new CameraManager();
+  constructor(config?: Partial<CameraConfig>) {
+    void config;
+    this.runtime = new VisionRuntime();
     this.handTracker = new HandTracker();
     this.landmarkSmoother = new LandmarkSmoother();
     this.trackingLoop = new TrackingLoop();
-    this.eventBus = new VisionEventBus();
   }
 
-  public async initialize(config?: Partial<VisionConfig>): Promise<void> {
-    if (config) {
-      this.config = { ...this.config, ...config };
-    }
-    this.status = 'starting';
-    // Placeholder engine orchestration initialization contract for Phase 1
-    this.status = 'idle';
+  public async initialize(): Promise<void> {
+    return this.runtime.initialize();
   }
 
-  public async start(): Promise<void> {
-    this.status = 'running';
-    // Placeholder engine start contract for Phase 1
+  public async requestCameraPermission(): Promise<CameraPermissionState> {
+    return this.runtime.requestCameraPermission();
   }
 
-  public async pause(): Promise<void> {
-    this.status = 'paused';
+  public async getAvailableCameras(): Promise<CameraDeviceInfo[]> {
+    return this.runtime.getAvailableCameras();
   }
 
-  public async stop(): Promise<void> {
-    this.trackingLoop.stop();
-    await this.cameraManager.shutdown();
-    this.status = 'idle';
+  public async startCamera(config?: Partial<CameraConfig>): Promise<MediaStream> {
+    return this.runtime.startCamera(config);
+  }
+
+  public async stopCamera(): Promise<void> {
+    return this.runtime.stopCamera();
+  }
+
+  public async pauseCamera(): Promise<void> {
+    return this.runtime.pauseCamera();
+  }
+
+  public async resumeCamera(): Promise<void> {
+    return this.runtime.resumeCamera();
+  }
+
+  public async switchCamera(deviceId: string): Promise<MediaStream> {
+    return this.runtime.switchCamera(deviceId);
+  }
+
+  public getPreviewStream(): MediaStream | null {
+    return this.runtime.getPreviewStream();
+  }
+
+  public getCameraStatus(): CameraStatus {
+    return this.runtime.getCameraStatus();
+  }
+
+  public getCameraPermissionState(): CameraPermissionState {
+    return this.runtime.getCameraPermissionState();
+  }
+
+  public processVideoFrame(source: FrameSource): void {
+    this.runtime.processVideoFrame(source);
+  }
+
+  public updateRendererFps(fps: number): void {
+    this.runtime.updateRendererFps(fps);
+  }
+
+  public setOnFrameCallback(callback: OnFrameCallback | null): void {
+    this.runtime.setOnFrameCallback(callback);
+  }
+
+  public getFrameMetrics() {
+    return this.runtime.getFrameMetrics();
   }
 
   public getStatus(): VisionEngineStatus {
-    return this.status;
+    return this.runtime.getStatus();
   }
 
   public getEventBus(): VisionEventBus {
-    return this.eventBus;
+    return this.runtime.getEventBus();
   }
 
   public getCameraManager(): CameraManager {
-    return this.cameraManager;
+    return this.runtime.getCameraManager();
+  }
+
+  public getVisionRuntime(): VisionRuntime {
+    return this.runtime;
   }
 
   public getHandTracker(): HandTracker {
@@ -70,15 +109,22 @@ export class VisionEngine {
   }
 
   public async destroy(): Promise<void> {
-    await this.stop();
-    this.eventBus.removeAllListeners();
-    this.status = 'destroyed';
+    await this.runtime.dispose();
   }
 }
 
 /**
- * Factory helper for creating VisionEngine instances.
+ * Singleton VisionEngine instance factory.
  */
-export function createVisionEngine(config?: Partial<VisionConfig>): VisionEngine {
+let visionEngineInstance: VisionEngine | null = null;
+
+export function getVisionEngine(config?: Partial<CameraConfig>): VisionEngine {
+  if (!visionEngineInstance) {
+    visionEngineInstance = new VisionEngine(config);
+  }
+  return visionEngineInstance;
+}
+
+export function createVisionEngine(config?: Partial<CameraConfig>): VisionEngine {
   return new VisionEngine(config);
 }

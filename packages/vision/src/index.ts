@@ -6,6 +6,7 @@
 
 export * from './types';
 export * from './camera';
+export * from './runtime';
 export * from './tracking';
 export * from './events';
 export * from './VisionEngine';
